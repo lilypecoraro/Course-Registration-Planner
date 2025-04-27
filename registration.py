@@ -397,7 +397,7 @@ class Graph:
             """
             Helper method for DFS traversal to detect cycles.
             """
-            
+
             stack = Stack()
             stack.push(start_vertex)
             # Set to track vertices
@@ -454,7 +454,7 @@ class Graph:
 
         courses = BinaryHeap()
         num_vertices = len(self.vertices)
-        remaining_prereqs = [0] * num_vertices
+        remaining_prereqs = {}  # Dictionary to track remaining prerequisites
         registration_plan = []
 
         # Edge case for graph with no courses
@@ -466,16 +466,22 @@ class Graph:
 
         # Calculate remaining prerequisites for each course
         for i in range(num_vertices):
+            prereq_count = 0
             for j in range(num_vertices):
                 if self.adjacency_matrix[j][i] == 1:  # j is a prerequisite for i
-                    remaining_prereqs[i] += 1
-            if remaining_prereqs[i] == 0: # No prerequisites, add to heap
+                    prereq_count += 1
+
+            # Store the number of prerequisites in the dictionary
+            remaining_prereqs[i] = prereq_count
+
+            # If no prerequisites, add to heap
+            if prereq_count == 0:
                 # Negative depth to prioritize courses with more prereqs
                 courses.insert((-self.vertices[i].depth, i))
 
-        while not courses.is_empty(): # Iterates until all courses have been scheduled
+        while not courses.is_empty():  # Iterates until all courses have been scheduled
             semester_courses = []
-            new_courses = [] # Courses that become available after current semester
+            new_courses = []  # Courses that become available after the current semester
 
             # Take up to 4 courses per semester
             for _ in range(4):
@@ -485,7 +491,7 @@ class Graph:
                 semester_courses.append(self.vertices[course_index].label)
 
                 # Update prerequisites for dependent courses
-                # Retrieve courses that depend on current course
+                # Retrieve courses that depend on the current course
                 for neighbor in self.get_adjacent_vertices(course_index):
                     remaining_prereqs[neighbor] -= 1
                     # If all prerequisites are met, add to new available courses
@@ -496,11 +502,10 @@ class Graph:
             for course in new_courses:
                 courses.insert((-self.vertices[course].depth, course))
 
-            if semester_courses: # Only add semesters with courses
+            if semester_courses:  # Only add semesters with courses
                 registration_plan.append(semester_courses)
 
         return registration_plan
-
 def main():
     """
     The main function to retrieve a registration plan.
