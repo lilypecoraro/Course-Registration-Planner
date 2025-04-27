@@ -367,7 +367,7 @@ class Graph:
             # Mark the current vertex as visited
             start_vertex.visited = True
 
-         # Iterate over all adjacent vertices
+            # Iterate over all adjacent vertices
             for next_index in self.get_adjacent_vertices(self.get_index(start_vertex.label)):
                 next_vertex = self.vertices[next_index]
 
@@ -393,37 +393,50 @@ class Graph:
 
         post: returns True if there is a cycle and False otherwise.
         """
-        def dfs_visit(start_vertex, stack):
+        def dfs_visit(start_vertex):
             """
             Helper method for DFS traversal to detect cycles.
             """
-            # Mark the current vertex as visited and add it to the stack
-            start_vertex.visited = True
-            stack.add(start_vertex)
+            
+            stack = Stack()
+            stack.push(start_vertex)
+            # Set to track vertices
+            in_stack = set([start_vertex])
 
-            # Iterate over all adjacent vertices
-            for next_index in self.get_adjacent_vertices(self.get_index(start_vertex.label)):
-                next_vertex = self.vertices[next_index]
+            # While there are vertices to process
+            while not stack.is_empty():
+                current_vertex = stack.peek()
 
-                # If the next vertex is unvisited, recursively visit it
-                if not next_vertex.visited:
-                    if dfs_visit(next_vertex, stack):
+                current_vertex.visited = True
+
+                unvisited_neighbors = False
+                for next_index in self.get_adjacent_vertices(self.get_index(current_vertex.label)):
+                    next_vertex = self.vertices[next_index]
+
+                    # If next vertex unvisited, push to stack
+                    if not next_vertex.visited:
+                        stack.push(next_vertex)
+                        in_stack.add(next_vertex)
+                        unvisited_neighbors = True
+                        break
+                    # If the next vertex is in the stack, a cycle is found
+                    if next_vertex in in_stack:
                         return True
-                # If the next vertex is in the stack, a cycle is found
-                elif next_vertex in stack:
-                    return True
 
-            # Remove the vertex from the stack
-            stack.remove(start_vertex)
+                # Backtrack if no unvisited neighbors
+                if not unvisited_neighbors:
+                    in_stack.remove(stack.pop())
+
             return False
 
+        # Initialize all vertices as unvisited
         for vertex in self.vertices:
             vertex.visited = False
 
-        stack = set()
+        # Perform DFS for each unvisited vertex
         for vertex in self.vertices:
             if not vertex.visited:
-                if dfs_visit(vertex, stack):
+                if dfs_visit(vertex):
                     return True
 
         return False
@@ -439,7 +452,7 @@ class Graph:
 
         courses = BinaryHeap()
         num_vertices = len(self.vertices)
-        remaining_prereqs = [0] * num_vertices
+        remaining_prereqs = {}
         registration_plan = []
 
         # Edge case for graph with no courses
@@ -448,15 +461,20 @@ class Graph:
 
         # Compute depths for all vertices
         self.compute_depth()
+    
+        # Initialize all courses with 0 prerequisites
+        for vertex in self.vertices:
+            remaining_prereqs[vertex.label] = 0
 
         # Calculate remaining prerequisites for each course
-        for i in range(num_vertices):
-            for j in range(num_vertices):
-                if self.adjacency_matrix[j][i] == 1:  # j is a prerequisite for i
-                    remaining_prereqs[i] += 1
-            if remaining_prereqs[i] == 0: # No prerequisites, add to heap
-                # Negative depth to prioritize courses with more prereqs
-                courses.insert((-self.vertices[i].depth, i))
+        for course_index in range(num_vertices):
+            for prereq_index in range(num_vertices):
+                if self.adjacency_matrix[prereq_index][course_index] == 1:
+                    remaining_prereqs[self.vertices[course_index].label] += 1
+        # Add courses with no prerequisites to heap
+        for course_index, vertex in enumerate(self.vertices):
+            if remaining_prereqs[vertex.label] == 0:
+                courses.insert((-vertex.depth, course_index))  # Max depth first
 
         while not courses.is_empty(): # Iterates until all courses have been scheduled
             semester_courses = []
@@ -471,15 +489,16 @@ class Graph:
 
                 # Update prerequisites for dependent courses
                 # Retrieve courses that depend on current course
-                for neighbor in self.get_adjacent_vertices(course_index):
-                    remaining_prereqs[neighbor] -= 1
+                for neighbor_index in self.get_adjacent_vertices(course_index):
+                    neighbor_label = self.vertices[neighbor_index].label
+                    remaining_prereqs[neighbor_label] -= 1
                     # If all prerequisites are met, add to new available courses
-                    if remaining_prereqs[neighbor] == 0:
-                        new_courses.append(neighbor)
+                    if remaining_prereqs[neighbor_label] == 0:
+                        new_courses.append(neighbor_index)
 
             # Add newly available courses
             for course in new_courses:
-                courses.insert((-self.vertices[course].depth, course))
+                courses.insert((-self.vertices[course_index].depth, course))
 
             if semester_courses: # Only add semesters with courses
                 registration_plan.append(semester_courses)
