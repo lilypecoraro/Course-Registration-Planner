@@ -441,6 +441,8 @@ class Graph:
 
         return False
 
+
+
     def get_registration_plan(self):
         """
         Return a valid ordering of courses to take for registration as a 2D
@@ -452,7 +454,7 @@ class Graph:
 
         courses = BinaryHeap()
         num_vertices = len(self.vertices)
-        remaining_prereqs = {}
+        remaining_prereqs = [0] * num_vertices
         registration_plan = []
 
         # Edge case for graph with no courses
@@ -461,20 +463,15 @@ class Graph:
 
         # Compute depths for all vertices
         self.compute_depth()
-    
-        # Initialize all courses with 0 prerequisites
-        for vertex in self.vertices:
-            remaining_prereqs[vertex.label] = 0
 
         # Calculate remaining prerequisites for each course
-        for course_index in range(num_vertices):
-            for prereq_index in range(num_vertices):
-                if self.adjacency_matrix[prereq_index][course_index] == 1:
-                    remaining_prereqs[self.vertices[course_index].label] += 1
-        # Add courses with no prerequisites to heap
-        for course_index, vertex in enumerate(self.vertices):
-            if remaining_prereqs[vertex.label] == 0:
-                courses.insert((-vertex.depth, course_index))  # Max depth first
+        for i in range(num_vertices):
+            for j in range(num_vertices):
+                if self.adjacency_matrix[j][i] == 1:  # j is a prerequisite for i
+                    remaining_prereqs[i] += 1
+            if remaining_prereqs[i] == 0: # No prerequisites, add to heap
+                # Negative depth to prioritize courses with more prereqs
+                courses.insert((-self.vertices[i].depth, i))
 
         while not courses.is_empty(): # Iterates until all courses have been scheduled
             semester_courses = []
@@ -489,16 +486,15 @@ class Graph:
 
                 # Update prerequisites for dependent courses
                 # Retrieve courses that depend on current course
-                for neighbor_index in self.get_adjacent_vertices(course_index):
-                    neighbor_label = self.vertices[neighbor_index].label
-                    remaining_prereqs[neighbor_label] -= 1
+                for neighbor in self.get_adjacent_vertices(course_index):
+                    remaining_prereqs[neighbor] -= 1
                     # If all prerequisites are met, add to new available courses
-                    if remaining_prereqs[neighbor_label] == 0:
-                        new_courses.append(neighbor_index)
+                    if remaining_prereqs[neighbor] == 0:
+                        new_courses.append(neighbor)
 
             # Add newly available courses
             for course in new_courses:
-                courses.insert((-self.vertices[course_index].depth, course))
+                courses.insert((-self.vertices[course].depth, course))
 
             if semester_courses: # Only add semesters with courses
                 registration_plan.append(semester_courses)
